@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
   <meta charset="UTF-8">
-  <title>My Money note</title>
+  <title>Money note</title>
 
   <!-- ไอคอนสำหรับ iPhone / Add to Home Screen -->
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -13,7 +13,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="My Money note">
+  <meta name="apple-mobile-web-app-title" content="Money note">
 
   <style>
     :root {
@@ -360,6 +360,13 @@
       padding: 5px 8px;
       border-radius: 10px;
       border: 1px solid rgba(226,232,240,0.9);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .legend-item.active {
+      border-color:#fb7185;
+      background:#fff7ed;
     }
 
     .legend-left { display: flex; align-items: center; gap: 6px; }
@@ -372,6 +379,58 @@
 
     .legend-label { font-weight: 600; }
     .legend-amount { font-weight: 600; }
+
+    /* กล่องรายละเอียดหมวดหมู่รายจ่าย */
+    .category-detail {
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(226,232,240,0.9);
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .category-detail-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #111827;
+    }
+    .category-detail-hint {
+      font-size:11px;
+      color:#6b7280;
+    }
+    .category-detail-list {
+      list-style:none;
+      padding:0;
+      margin:4px 0 0;
+    }
+    .category-detail-list li {
+      display:flex;
+      justify-content:space-between;
+      gap:6px;
+      padding:2px 0;
+      border-bottom:1px dashed #e5e7eb;
+    }
+    .category-detail-list li:last-child {
+      border-bottom:none;
+    }
+    .category-detail-left {
+      display:flex;
+      flex-direction:column;
+    }
+    .category-detail-date {
+      font-size:11px;
+      color:#6b7280;
+    }
+    .category-detail-name {
+      font-size:12px;
+      color:#111827;
+    }
+    .category-detail-amount {
+      font-weight:600;
+    }
 
     /* Pie chart สำหรับรายปี (รับ vs จ่าย) */
     .pie-chart-year {
@@ -410,9 +469,9 @@
 
     /* รายงานแบบแบ่งวัน / ตาราง */
     .report-container {
-      max-height: 380px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      /* ให้เลื่อนทั้งหน้า ไม่ใช้ scroll ซ้อน */
+      max-height: none;
+      overflow-y: visible;
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -476,10 +535,10 @@
       overflow: hidden;
     }
 
+    /* ไม่ให้มี scroll ซ้อนใน card แต่ใช้ scroll ของหน้าแทน */
     .day-table-scroll {
-      max-height: 200px;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      max-height: none;
+      overflow-y: visible;
     }
 
     .day-table {
@@ -597,7 +656,7 @@
       <!-- TAB 1: บันทึกประจำวัน -->
       <div id="tab1" class="tab-content active">
         <div class="panel panel-form">
-          <h1>My Money note</h1>
+          <h1>Money note</h1>
           <div class="subtitle">จดรายรับรายจ่ายแบบง่าย ๆ ทุกวัน</div>
 
           <div class="field">
@@ -675,6 +734,13 @@
           </div>
 
           <div class="pie-legend" id="categoryLegendMonth"></div>
+
+          <div id="categoryDetailMonth" class="category-detail">
+            <div class="category-detail-title">รายละเอียดตามหมวดหมู่</div>
+            <div class="category-detail-hint">
+              แตะที่หมวดหมู่ด้านบนเพื่อดูรายการในเดือนนี้
+            </div>
+          </div>
         </div>
 
         <div class="table-panel">
@@ -706,14 +772,14 @@
               </div>
             </div>
             <div class="pie-legend">
-              <div class="legend-item">
+              <div class="legend-item" style="cursor:default">
                 <div class="legend-left">
                   <span class="legend-dot" style="background:var(--income-color)"></span>
                   <span class="legend-label">รายรับ</span>
                 </div>
                 <span class="legend-amount" id="legendIncomeYear">0.00 ฿</span>
               </div>
-              <div class="legend-item">
+              <div class="legend-item" style="cursor:default">
                 <div class="legend-left">
                   <span class="legend-dot" style="background:var(--expense-color)"></span>
                   <span class="legend-label">รายจ่าย</span>
@@ -951,10 +1017,63 @@
       expenseVal.textContent = formatNumber(totalExpense) + ' ฿';
     }
 
+    function resetCategoryDetailMonth() {
+      const box = document.getElementById('categoryDetailMonth');
+      if (!box) return;
+      box.innerHTML = `
+        <div class="category-detail-title">รายละเอียดตามหมวดหมู่</div>
+        <div class="category-detail-hint">
+          แตะที่หมวดหมู่ด้านบนเพื่อดูรายการในเดือนนี้
+        </div>
+      `;
+    }
+
+    function showCategoryDetailsMonth(catKey, label, listMonth) {
+      const box = document.getElementById('categoryDetailMonth');
+      if (!box) return;
+
+      const items = listMonth.filter(
+        item => item.type === 'expense' && item.categoryKey === catKey
+      );
+
+      if (items.length === 0) {
+        box.innerHTML = `
+          <div class="category-detail-title">${label}</div>
+          <div class="category-detail-hint">ไม่มีรายการในหมวดนี้สำหรับเดือนที่เลือก</div>
+        `;
+        return;
+      }
+
+      const htmlParts = [];
+      htmlParts.push(`<div class="category-detail-title">${label}</div>`);
+      htmlParts.push('<ul class="category-detail-list">');
+
+      items
+        .sort((a,b) => a.date.localeCompare(b.date))
+        .forEach(item => {
+          const dateLabel = formatDisplayDateBE(item.date);
+          const title = item.title || '';
+          const amt = formatNumber(item.amount);
+          htmlParts.push(`
+            <li>
+              <div class="category-detail-left">
+                <span class="category-detail-name">${title}</span>
+                <span class="category-detail-date">${dateLabel}</span>
+              </div>
+              <span class="category-detail-amount">${amt} ฿</span>
+            </li>
+          `);
+        });
+
+      htmlParts.push('</ul>');
+      box.innerHTML = htmlParts.join('');
+    }
+
     /* สรุปรายจ่ายตามหมวดหมู่ (legend) */
     function updateExpenseCategoryListMonth(listMonth) {
       const legendContainer = document.getElementById('categoryLegendMonth');
       legendContainer.innerHTML = '';
+      resetCategoryDetailMonth();
 
       const expenses = listMonth.filter(item => item.type === 'expense');
       if (expenses.length === 0) {
@@ -1011,6 +1130,14 @@
 
         item.appendChild(left);
         item.appendChild(right);
+
+        // click เพื่อดูรายละเอียดของหมวดนี้ในเดือนนั้น
+        item.addEventListener('click', () => {
+          legendContainer.querySelectorAll('.legend-item').forEach(li => li.classList.remove('active'));
+          item.classList.add('active');
+          showCategoryDetailsMonth(entry.key, entry.label, listMonth);
+        });
+
         legendContainer.appendChild(item);
       });
     }
